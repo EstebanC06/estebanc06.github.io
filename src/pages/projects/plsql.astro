@@ -6,10 +6,10 @@ import Footer from '../../components/Footer.astro';
 const translations = {
 	back: { en: '← Back to Evidences', es: '← Volver a Evidencias' },
 	subtitle: { en: 'Scripts', es: 'Scripts' },
-	title: { en: 'SQL', es: 'SQL' },
+	title: { en: 'PL/SQL', es: 'PL/SQL' },
 	description: {
-		en: 'Collection of SQL scripts: queries, joins, subqueries, views and more.',
-		es: 'Colección de scripts SQL: consultas, joins, subconsultas, vistas y más.'
+		en: 'Stored procedures, functions, cursors, triggers and packages on Oracle Database.',
+		es: 'Procedimientos almacenados, funciones, cursores, triggers y paquetes en Oracle Database.'
 	},
 	download: { en: 'Download', es: 'Descargar' },
 	viewCode: { en: 'View code', es: 'Ver código' },
@@ -21,15 +21,6 @@ const translations = {
 };
 
 // ─── AGREGA TUS SCRIPTS AQUÍ ───────────────────────────────────────────────
-// Para cada script nuevo que subas a public/scripts/sql/, añade un objeto:
-// {
-//   title: 'Nombre visible',
-//   titleEN: 'English name',
-//   file: '/scripts/sql/nombre-del-archivo.sql',
-//   description: 'Breve descripción en español',
-//   descriptionEN: 'Short description in English',
-//   code: `-- pega aquí el contenido del script`
-// }
 const scripts: {
 	title: string;
 	titleEN: string;
@@ -38,341 +29,19 @@ const scripts: {
 	descriptionEN: string;
 	code: string;
 }[] = [
-	{
-		title: 'Taller SQL Avanzado — Ajuste Salarial (Variante 3)',
-		titleEN: 'Advanced SQL Workshop — Salary Adjustment (Variant 3)',
-		file: '/scripts/sql/01-taller-sql-avanzado.sql',
-		description: 'CTEs, funciones analíticas, transacciones ACID y auditoría de ajustes salariales sobre Oracle DB.',
-		descriptionEN: 'CTEs, analytic functions, ACID transactions and salary adjustment audit on Oracle DB.',
-		code: `-- =====================================================================
--- Taller aplicado 1 - SQL avanzado + Transacciones (ACID) aplicado
--- Integrantes: David Esteban Caicedo / Nicolas Zambrano
--- Curso: Bases de Datos 2 | Fecha: 08/04/2026 | Variante: 3
--- =====================================================================
-
-SET SERVEROUTPUT ON
-SET FEEDBACK ON
-
-DEFINE p_variant_id = 3;
-DEFINE p_execution_tag = 'P01_FINAL';
-
--- ============================================================
--- 1. CONSULTA DIAGNÓSTICA
--- ============================================================
-WITH
-    metricas_depto AS (
-        SELECT
-            emp.department_id,
-            AVG(emp.salary)  AS dept_avg_salary,
-            MAX(emp.salary)  AS dept_max_salary,
-            COUNT(*)         AS dept_employee_count
-        FROM t1_employees emp
-        WHERE emp.department_id IS NOT NULL
-        GROUP BY emp.department_id
-    ),
-    con_historial_reciente AS (
-        SELECT DISTINCT
-            jh.employee_id,
-            'SI' AS recent_flag
-        FROM t1_job_history jh
-        CROSS JOIN t1_variants var
-        WHERE var.variant_id = &p_variant_id
-          AND jh.end_date >= ADD_MONTHS(TRUNC(SYSDATE), -var.recent_job_history_months)
-    )
-
-SELECT
-    e.employee_id,
-    e.first_name,
-    e.last_name,
-    e.job_id,
-    e.manager_id,
-    e.department_id,
-    dep.department_name,
-    e.salary,
-    e.hire_date,
-    ROUND(MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12, 2)                        AS years_service,
-    ROUND(md.dept_avg_salary, 2)                                                AS dept_avg_salary,
-    ROUND(md.dept_max_salary, 2)                                                AS dept_max_salary,
-    md.dept_employee_count,
-    ROUND(((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100, 2)     AS pct_gap_to_avg,
-    NVL(chr.recent_flag, 'NO')                                                  AS recent_job_history_flag,
-    DENSE_RANK() OVER (
-        PARTITION BY e.department_id
-        ORDER BY e.salary DESC
-    )                                                                           AS salary_rank_in_department
-FROM      t1_employees   e
-LEFT JOIN t1_departments dep ON dep.department_id = e.department_id
-LEFT JOIN metricas_depto  md  ON md.department_id  = e.department_id
-LEFT JOIN con_historial_reciente chr ON chr.employee_id = e.employee_id
-ORDER BY e.department_id NULLS LAST, e.salary DESC;
-
--- ============================================================
--- 2. DECISIÓN DE POBLACIÓN ELEGIBLE
--- ============================================================
-WITH
-    metricas_depto AS (
-        SELECT
-            emp.department_id,
-            AVG(emp.salary) AS dept_avg_salary,
-            MAX(emp.salary) AS dept_max_salary,
-            COUNT(*)        AS dept_employee_count
-        FROM t1_employees emp
-        WHERE emp.department_id IS NOT NULL
-        GROUP BY emp.department_id
-    ),
-    con_historial_reciente AS (
-        SELECT DISTINCT jh.employee_id, 'SI' AS recent_flag
-        FROM t1_job_history jh
-        CROSS JOIN t1_variants var
-        WHERE var.variant_id = &p_variant_id
-          AND jh.end_date >= ADD_MONTHS(TRUNC(SYSDATE), -var.recent_job_history_months)
-    ),
-    lista_managers AS (
-        SELECT DISTINCT manager_id
-        FROM t1_employees
-        WHERE manager_id IS NOT NULL
-    ),
-    config_variante AS (
-        SELECT
-            excluded_department_id,
-            min_years_service,
-            recent_job_history_months,
-            gap_high_threshold_pct,
-            gap_mid_threshold_pct,
-            raise_high_pct,
-            raise_mid_pct,
-            raise_low_pct,
-            max_salary_vs_avg_pct
-        FROM t1_variants
-        WHERE variant_id = &p_variant_id
-    )
-
-SELECT
-    e.employee_id,
-    e.first_name,
-    e.last_name,
-    e.department_id,
-    dep.department_name,
-    e.salary,
-    ROUND(MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12, 2)                    AS years_service,
-    ROUND(md.dept_avg_salary, 2)                                            AS dept_avg_salary,
-    ROUND(md.dept_max_salary, 2)                                            AS dept_max_salary,
-    md.dept_employee_count,
-    ROUND(((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100, 2) AS pct_gap_to_avg,
-    NVL(chr.recent_flag, 'NO')                                              AS recent_job_history_flag,
-    CASE
-        WHEN lm.manager_id IS NOT NULL THEN 'SI'
-        WHEN e.job_id LIKE '%_VP'      THEN 'SI'
-        WHEN e.job_id LIKE 'AD_%'      THEN 'SI'
-        ELSE 'NO'
-    END AS manager_or_exec_flag,
-    CASE
-        WHEN e.department_id IS NULL                                                     THEN 'NO_ELEGIBLE'
-        WHEN e.department_id = cfg.excluded_department_id                                THEN 'NO_ELEGIBLE'
-        WHEN md.dept_employee_count < 3                                                  THEN 'NO_ELEGIBLE'
-        WHEN MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12 < cfg.min_years_service          THEN 'NO_ELEGIBLE'
-        WHEN NVL(chr.recent_flag, 'NO') = 'SI'                                           THEN 'NO_ELEGIBLE'
-        WHEN lm.manager_id IS NOT NULL OR e.job_id LIKE '%_VP' OR e.job_id LIKE 'AD_%'  THEN 'NO_ELEGIBLE'
-        WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 <= 0          THEN 'NO_ELEGIBLE'
-        ELSE 'ELEGIBLE'
-    END AS eligibility_flag,
-    CASE
-        WHEN e.department_id IS NULL                                                     THEN 'SIN_DEPARTAMENTO'
-        WHEN e.department_id = cfg.excluded_department_id                                THEN 'DEPTO_EXCLUIDO'
-        WHEN md.dept_employee_count < 3                                                  THEN 'DEPTO_MENOR_A_3'
-        WHEN MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12 < cfg.min_years_service          THEN 'ANTIGUEDAD_INSUFICIENTE'
-        WHEN NVL(chr.recent_flag, 'NO') = 'SI'                                           THEN 'HISTORIAL_RECIENTE'
-        WHEN lm.manager_id IS NOT NULL OR e.job_id LIKE '%_VP' OR e.job_id LIKE 'AD_%'  THEN 'MANAGER_O_DIRECTIVO'
-        WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 <= 0          THEN 'SALARIO_NO_APLICA'
-        ELSE NULL
-    END AS exclusion_reason,
-    CASE
-        WHEN e.department_id IS NULL OR e.department_id = cfg.excluded_department_id
-          OR md.dept_employee_count < 3
-          OR MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12 < cfg.min_years_service
-          OR NVL(chr.recent_flag, 'NO') = 'SI'
-          OR lm.manager_id IS NOT NULL OR e.job_id LIKE '%_VP' OR e.job_id LIKE 'AD_%'
-          OR ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 <= 0  THEN NULL
-        WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_high_threshold_pct THEN cfg.raise_high_pct
-        WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_mid_threshold_pct  THEN cfg.raise_mid_pct
-        ELSE cfg.raise_low_pct
-    END AS adjustment_pct,
-    CASE
-        WHEN e.department_id IS NULL OR e.department_id = cfg.excluded_department_id
-          OR md.dept_employee_count < 3
-          OR MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12 < cfg.min_years_service
-          OR NVL(chr.recent_flag, 'NO') = 'SI'
-          OR lm.manager_id IS NOT NULL OR e.job_id LIKE '%_VP' OR e.job_id LIKE 'AD_%'
-          OR ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 <= 0  THEN NULL
-        WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_high_threshold_pct THEN 'AJUSTE_ALTO'
-        WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_mid_threshold_pct  THEN 'AJUSTE_MEDIO'
-        ELSE 'AJUSTE_BAJO'
-    END AS rule_applied
-FROM      t1_employees         e
-LEFT JOIN t1_departments        dep ON dep.department_id = e.department_id
-LEFT JOIN metricas_depto        md  ON md.department_id  = e.department_id
-LEFT JOIN con_historial_reciente chr ON chr.employee_id  = e.employee_id
-LEFT JOIN lista_managers         lm  ON lm.manager_id    = e.employee_id
-CROSS JOIN config_variante       cfg
-ORDER BY eligibility_flag DESC, e.department_id, pct_gap_to_avg DESC;
-
--- ============================================================
--- 3. PREVALIDACIÓN ANTES DE LA TRANSACCIÓN
--- ============================================================
-
--- A. Resumen de impacto proyectado
-WITH
-    metricas_depto AS (
-        SELECT department_id, AVG(salary) AS dept_avg_salary,
-               MAX(salary) AS dept_max_salary, COUNT(*) AS dept_employee_count
-        FROM t1_employees WHERE department_id IS NOT NULL GROUP BY department_id
-    ),
-    con_historial_reciente AS (
-        SELECT DISTINCT jh.employee_id, 'SI' AS recent_flag
-        FROM t1_job_history jh CROSS JOIN t1_variants var
-        WHERE var.variant_id = &p_variant_id
-          AND jh.end_date >= ADD_MONTHS(TRUNC(SYSDATE), -var.recent_job_history_months)
-    ),
-    lista_managers AS (SELECT DISTINCT manager_id FROM t1_employees WHERE manager_id IS NOT NULL),
-    config_variante AS (
-        SELECT excluded_department_id, min_years_service, gap_high_threshold_pct,
-               gap_mid_threshold_pct, raise_high_pct, raise_mid_pct, raise_low_pct, max_salary_vs_avg_pct
-        FROM t1_variants WHERE variant_id = &p_variant_id
-    ),
-    candidatos AS (
-        SELECT e.employee_id, e.department_id, e.salary AS salary_before, md.dept_avg_salary,
-               ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 AS brecha_pct,
-               CASE
-                   WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_high_threshold_pct THEN cfg.raise_high_pct
-                   WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_mid_threshold_pct  THEN cfg.raise_mid_pct
-                   ELSE cfg.raise_low_pct
-               END AS adjustment_pct,
-               CASE
-                   WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_high_threshold_pct THEN 'AJUSTE_ALTO'
-                   WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 >= cfg.gap_mid_threshold_pct  THEN 'AJUSTE_MEDIO'
-                   ELSE 'AJUSTE_BAJO'
-               END AS rule_applied, cfg.max_salary_vs_avg_pct
-        FROM t1_employees e
-        JOIN metricas_depto md ON md.department_id = e.department_id
-        JOIN config_variante cfg ON 1 = 1
-        LEFT JOIN con_historial_reciente chr ON chr.employee_id = e.employee_id
-        LEFT JOIN lista_managers lm ON lm.manager_id = e.employee_id
-        WHERE e.department_id IS NOT NULL AND e.department_id <> cfg.excluded_department_id
-          AND md.dept_employee_count >= 3
-          AND MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12 >= cfg.min_years_service
-          AND NVL(chr.recent_flag, 'NO') = 'NO' AND lm.manager_id IS NULL
-          AND e.job_id NOT LIKE '%_VP' AND e.job_id NOT LIKE 'AD_%'
-          AND ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 > 0
-    ),
-    candidatos_proyectados AS (
-        SELECT c.*,
-               LEAST(ROUND(c.salary_before * (1 + c.adjustment_pct / 100), 2),
-                     ROUND(c.dept_avg_salary * c.max_salary_vs_avg_pct / 100, 2)) AS salary_after
-        FROM candidatos c
-    )
-SELECT COUNT(*) AS total_eligible_employees,
-       ROUND(SUM(salary_before), 2) AS total_salary_before,
-       ROUND(SUM(salary_after), 2)  AS total_salary_after,
-       ROUND(SUM(salary_after - salary_before), 2) AS total_increment
-FROM candidatos_proyectados;
-
--- ============================================================
--- 4. EJECUCIÓN TRANSACCIONAL
--- ============================================================
-SAVEPOINT sv_before_adjustment;
-
--- 4.2 INSERCIÓN EN AUDITORÍA
-INSERT INTO audit_salary_adjustments_t1 (
-    audit_id, execution_tag, variant_id, employee_id, department_id,
-    salary_before, salary_after, pct_gap_to_avg_before, rule_applied,
-    executed_by, executed_at, notes
-)
-SELECT
-    audit_salary_adj_t1_seq.NEXTVAL, '&p_execution_tag', &p_variant_id,
-    calc.employee_id, calc.department_id, calc.salary_before, calc.salary_after,
-    ROUND(calc.brecha_pct, 4), calc.rule_applied, USER, SYSDATE,
-    'Variante 3 - Ajuste controlado. Tag: &p_execution_tag'
-FROM (
-    SELECT e.employee_id, e.department_id, e.salary AS salary_before,
-           ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 AS brecha_pct,
-           LEAST(
-               ROUND(e.salary * (1 + CASE
-                   WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100
-                        >= cfg.gap_high_threshold_pct THEN cfg.raise_high_pct
-                   WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100
-                        >= cfg.gap_mid_threshold_pct  THEN cfg.raise_mid_pct
-                   ELSE cfg.raise_low_pct END / 100), 2),
-               ROUND(md.dept_avg_salary * cfg.max_salary_vs_avg_pct / 100, 2)
-           ) AS salary_after,
-           CASE
-               WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100
-                    >= cfg.gap_high_threshold_pct THEN 'AJUSTE_ALTO'
-               WHEN ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100
-                    >= cfg.gap_mid_threshold_pct  THEN 'AJUSTE_MEDIO'
-               ELSE 'AJUSTE_BAJO'
-           END AS rule_applied
-    FROM t1_employees e
-    JOIN (SELECT department_id, AVG(salary) AS dept_avg_salary, COUNT(*) AS dept_employee_count
-          FROM t1_employees WHERE department_id IS NOT NULL GROUP BY department_id) md
-      ON e.department_id = md.department_id
-    JOIN t1_variants cfg ON cfg.variant_id = &p_variant_id
-    WHERE e.department_id IS NOT NULL AND e.department_id <> cfg.excluded_department_id
-      AND md.dept_employee_count >= 3
-      AND MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12 >= cfg.min_years_service
-      AND NOT EXISTS (SELECT 1 FROM t1_job_history jh
-                      WHERE jh.employee_id = e.employee_id
-                        AND jh.end_date >= ADD_MONTHS(TRUNC(SYSDATE), -cfg.recent_job_history_months))
-      AND e.employee_id NOT IN (SELECT DISTINCT manager_id FROM t1_employees WHERE manager_id IS NOT NULL)
-      AND e.job_id NOT LIKE '%_VP' AND e.job_id NOT LIKE 'AD_%'
-      AND ((md.dept_avg_salary - e.salary) / md.dept_avg_salary) * 100 > 0
-) calc;
-
-COMMIT;
-
--- ============================================================
--- 5. VALIDACIÓN POSTERIOR
--- ============================================================
-
--- SALIDA 1: Empleados impactados
-SELECT aud.employee_id, emp.first_name, emp.last_name, aud.department_id,
-       aud.salary_before, aud.salary_after, aud.execution_tag
-FROM audit_salary_adjustments_t1 aud
-JOIN t1_employees emp ON emp.employee_id = aud.employee_id
-WHERE aud.execution_tag = '&p_execution_tag'
-ORDER BY aud.department_id;
-
--- SALIDA 2: Resumen económico final
-SELECT COUNT(*) AS total_rows_audited,
-       ROUND(SUM(salary_before), 2) AS total_salary_before,
-       ROUND(SUM(salary_after), 2)  AS total_salary_after,
-       ROUND(SUM(salary_after - salary_before), 2) AS total_increment
-FROM audit_salary_adjustments_t1
-WHERE execution_tag = '&p_execution_tag';
-
--- SALIDA 3: Validación de topes
-SELECT aud.employee_id, aud.department_id, aud.salary_after,
-       ROUND(stats.dept_avg_salary * cfg.max_salary_vs_avg_pct / 100, 2) AS allowed_max_salary,
-       CASE WHEN aud.salary_after <= ROUND(stats.dept_avg_salary * cfg.max_salary_vs_avg_pct / 100, 2)
-            THEN 'CUMPLE' ELSE 'EXCEDE_TOPE' END AS top_limit_status
-FROM audit_salary_adjustments_t1 aud
-JOIN (SELECT department_id, AVG(salary) AS dept_avg_salary FROM t1_employees
-      WHERE department_id IS NOT NULL GROUP BY department_id) stats
-  ON stats.department_id = aud.department_id
-JOIN t1_variants cfg ON cfg.variant_id = &p_variant_id
-WHERE aud.execution_tag = '&p_execution_tag'
-ORDER BY aud.department_id;
-
--- SALIDA 4: Registro completo de auditoría
-SELECT audit_id, execution_tag, variant_id, employee_id, department_id,
-       salary_before, salary_after, rule_applied, executed_by, executed_at
-FROM audit_salary_adjustments_t1
-WHERE execution_tag = '&p_execution_tag'
-ORDER BY audit_id;`
-	},
+	// Ejemplo:
+	// {
+	//   title: 'Procedimiento Nómina - Taller 2',
+	//   titleEN: 'Payroll Procedure - Workshop 2',
+	//   file: '/scripts/plsql/01-nomina.sql',
+	//   description: 'Liquidación de nómina con cursores y excepciones',
+	//   descriptionEN: 'Payroll settlement using cursors and exceptions',
+	//   code: `CREATE OR REPLACE PROCEDURE liquidar_nomina IS\n  CURSOR c_emp IS SELECT * FROM empleados;\nBEGIN\n  FOR emp IN c_emp LOOP\n    -- lógica aquí\n  END LOOP;\nEND;`
+	// },
 ];
 ---
 
-<Layout title={`SQL Scripts | David Caicedo`}>
+<Layout title={`PL/SQL Scripts | David Caicedo`}>
 	<Header />
 
 	<main class="min-h-screen px-4 sm:px-6 md:px-6">
@@ -401,19 +70,17 @@ ORDER BY audit_id;`
 
 			{scripts.length === 0 ? (
 				<div class="flex flex-col items-center justify-center py-24 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-2xl">
-					<span class="text-4xl mb-4">🗄️</span>
+					<span class="text-4xl mb-4">📦</span>
 					<p class="text-gray-500 dark:text-gray-400 text-sm"
 						data-en={translations.empty.en} data-es={translations.empty.es}>
 						{translations.empty.en}
 					</p>
 				</div>
 			) : (
-				<div class="space-y-4" id="scripts-list">
+				<div class="space-y-4">
 					{scripts.map((script, i) => (
 						<div class="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-900/50 script-card">
-							{/* Header del script */}
-							<div class="flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none script-toggle"
-								data-index={i}>
+							<div class="flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none script-toggle" data-index={i}>
 								<div class="flex-1 min-w-0">
 									<h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white locale-es">{script.title}</h3>
 									<h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white locale-en">{script.titleEN}</h3>
@@ -438,8 +105,6 @@ ORDER BY audit_id;`
 									</svg>
 								</div>
 							</div>
-
-							{/* Visor de código (colapsado por defecto) */}
 							<div class="code-panel hidden">
 								<div class="border-t border-gray-200 dark:border-gray-800">
 									<pre class="overflow-x-auto p-4 sm:p-5 text-xs sm:text-sm leading-relaxed text-gray-800 dark:text-gray-200 font-mono bg-gray-950/5 dark:bg-gray-950/50"><code>{script.code}</code></pre>
@@ -457,10 +122,7 @@ ORDER BY audit_id;`
 
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
-			// Fade in
 			document.querySelector('.fade-in')?.classList.add('visible');
-
-			// Toggle script panels
 			document.querySelectorAll('.script-toggle').forEach((toggle) => {
 				toggle.addEventListener('click', () => {
 					const card = toggle.closest('.script-card');
@@ -469,22 +131,16 @@ ORDER BY audit_id;`
 					const chevron = card.querySelector('.chevron');
 					const btn = card.querySelector('.view-btn');
 					if (!panel || !chevron || !btn) return;
-
 					const isOpen = !panel.classList.contains('hidden');
 					const lang = document.documentElement.getAttribute('data-lang') || 'es';
-
 					if (isOpen) {
 						panel.classList.add('hidden');
 						chevron.classList.remove('rotate-180');
-						btn.textContent = lang === 'es'
-							? btn.getAttribute('data-es-open')!
-							: btn.getAttribute('data-en-open')!;
+						btn.textContent = lang === 'es' ? btn.getAttribute('data-es-open')! : btn.getAttribute('data-en-open')!;
 					} else {
 						panel.classList.remove('hidden');
 						chevron.classList.add('rotate-180');
-						btn.textContent = lang === 'es'
-							? btn.getAttribute('data-es-close')!
-							: btn.getAttribute('data-en-close')!;
+						btn.textContent = lang === 'es' ? btn.getAttribute('data-es-close')! : btn.getAttribute('data-en-close')!;
 					}
 				});
 			});
@@ -494,8 +150,5 @@ ORDER BY audit_id;`
 
 <style>
 	@reference "../../styles/global.css";
-
-	pre {
-		tab-size: 2;
-	}
+	pre { tab-size: 2; }
 </style>
