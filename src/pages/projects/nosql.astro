@@ -1,0 +1,154 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const translations = {
+	back: { en: '← Back to Evidences', es: '← Volver a Evidencias' },
+	subtitle: { en: 'Scripts', es: 'Scripts' },
+	title: { en: 'NoSQL', es: 'NoSQL' },
+	description: {
+		en: 'Queries and operations on document, key-value and graph databases.',
+		es: 'Consultas y operaciones en bases de datos documentales, clave-valor y de grafos.'
+	},
+	download: { en: 'Download', es: 'Descargar' },
+	viewCode: { en: 'View code', es: 'Ver código' },
+	hideCode: { en: 'Hide code', es: 'Ocultar código' },
+	empty: {
+		en: 'No scripts yet. They will be added progressively.',
+		es: 'Aún no hay scripts. Se irán agregando progresivamente.'
+	}
+};
+
+// ─── AGREGA TUS SCRIPTS AQUÍ ───────────────────────────────────────────────
+const scripts: {
+	title: string;
+	titleEN: string;
+	file: string;
+	description: string;
+	descriptionEN: string;
+	code: string;
+}[] = [
+	// Ejemplo:
+	// {
+	//   title: 'Consultas MongoDB - Taller 1',
+	//   titleEN: 'MongoDB Queries - Workshop 1',
+	//   file: '/scripts/nosql/01-mongodb.js',
+	//   description: 'find, aggregate y pipeline sobre colección de productos',
+	//   descriptionEN: 'find, aggregate and pipeline on products collection',
+	//   code: `db.productos.find({ precio: { $gt: 50 } }).sort({ nombre: 1 });`
+	// },
+];
+---
+
+<Layout title={`NoSQL Scripts | David Caicedo`}>
+	<Header />
+
+	<main class="min-h-screen px-4 sm:px-6 md:px-6">
+		<article class="max-w-3xl mx-auto pt-24 sm:pt-32 md:pt-48 pb-16 sm:pb-24 fade-in">
+
+			<a href="/projects"
+				class="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors mb-8 inline-block"
+				data-en={translations.back.en} data-es={translations.back.es}>
+				{translations.back.en}
+			</a>
+
+			<header class="mb-12">
+				<p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 tracking-wider uppercase"
+					data-en={translations.subtitle.en} data-es={translations.subtitle.es}>
+					{translations.subtitle.en}
+				</p>
+				<h1 class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4"
+					data-en={translations.title.en} data-es={translations.title.es}>
+					{translations.title.en}
+				</h1>
+				<p class="text-lg text-gray-600 dark:text-gray-400"
+					data-en={translations.description.en} data-es={translations.description.es}>
+					{translations.description.en}
+				</p>
+			</header>
+
+			{scripts.length === 0 ? (
+				<div class="flex flex-col items-center justify-center py-24 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-2xl">
+					<span class="text-4xl mb-4">🍃</span>
+					<p class="text-gray-500 dark:text-gray-400 text-sm"
+						data-en={translations.empty.en} data-es={translations.empty.es}>
+						{translations.empty.en}
+					</p>
+				</div>
+			) : (
+				<div class="space-y-4">
+					{scripts.map((script, i) => (
+						<div class="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-900/50 script-card">
+							<div class="flex items-center justify-between p-4 sm:p-5 cursor-pointer select-none script-toggle" data-index={i}>
+								<div class="flex-1 min-w-0">
+									<h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white locale-es">{script.title}</h3>
+									<h3 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white locale-en">{script.titleEN}</h3>
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 locale-es">{script.description}</p>
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 locale-en">{script.descriptionEN}</p>
+								</div>
+								<div class="flex items-center gap-2 ml-3 shrink-0">
+									<a href={script.file} download
+										class="px-3 py-1.5 text-xs font-medium rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:animated-bg transition-all"
+										data-en={translations.download.en} data-es={translations.download.es}
+										onclick="event.stopPropagation()">
+										{translations.download.en}
+									</a>
+									<button
+										class="px-3 py-1.5 text-xs font-medium rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors view-btn"
+										data-en-open={translations.viewCode.en} data-es-open={translations.viewCode.es}
+										data-en-close={translations.hideCode.en} data-es-close={translations.hideCode.es}>
+										{translations.viewCode.en}
+									</button>
+									<svg class="w-4 h-4 text-gray-400 transition-transform duration-300 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+									</svg>
+								</div>
+							</div>
+							<div class="code-panel hidden">
+								<div class="border-t border-gray-200 dark:border-gray-800">
+									<pre class="overflow-x-auto p-4 sm:p-5 text-xs sm:text-sm leading-relaxed text-gray-800 dark:text-gray-200 font-mono bg-gray-950/5 dark:bg-gray-950/50"><code>{script.code}</code></pre>
+								</div>
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
+		</article>
+	</main>
+
+	<Footer />
+
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			document.querySelector('.fade-in')?.classList.add('visible');
+			document.querySelectorAll('.script-toggle').forEach((toggle) => {
+				toggle.addEventListener('click', () => {
+					const card = toggle.closest('.script-card');
+					if (!card) return;
+					const panel = card.querySelector('.code-panel');
+					const chevron = card.querySelector('.chevron');
+					const btn = card.querySelector('.view-btn');
+					if (!panel || !chevron || !btn) return;
+					const isOpen = !panel.classList.contains('hidden');
+					const lang = document.documentElement.getAttribute('data-lang') || 'es';
+					if (isOpen) {
+						panel.classList.add('hidden');
+						chevron.classList.remove('rotate-180');
+						btn.textContent = lang === 'es' ? btn.getAttribute('data-es-open')! : btn.getAttribute('data-en-open')!;
+					} else {
+						panel.classList.remove('hidden');
+						chevron.classList.add('rotate-180');
+						btn.textContent = lang === 'es' ? btn.getAttribute('data-es-close')! : btn.getAttribute('data-en-close')!;
+					}
+				});
+			});
+		});
+	</script>
+</Layout>
+
+<style>
+	@reference "../../styles/global.css";
+	pre { tab-size: 2; }
+</style>

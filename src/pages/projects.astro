@@ -3,39 +3,38 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 
-// Import all description files from the new location
-const esDescriptions = import.meta.glob('../project-descriptions/*/descripcion.md', { query: '?raw', import: 'default' });
-const enDescriptions = import.meta.glob('../project-descriptions/*/descripcion.en.md', { query: '?raw', import: 'default' });
-
-// Get all project folders
-const projectFolders = Object.keys(esDescriptions).map(path => {
-    const parts = path.split('/');
-    return parts[parts.length - 2];
-});
-
-const projects = await Promise.all(projectFolders.map(async (folder) => {
-    const esPath = `../project-descriptions/${folder}/descripcion.md`;
-    const enPath = `../project-descriptions/${folder}/descripcion.en.md`;
-    
-    const esContent = await esDescriptions[esPath]() as string;
-    const enContent = await enDescriptions[enPath]() as string;
-    
-    // Extract titles
-    const esTitle = esContent.split('\n')[0].replace(/### |# /g, '');
-    const enTitle = enContent.split('\n')[0].replace(/### |# /g, '');
-
-    return {
-        slug: folder,
-        name: esTitle,
-        enName: enTitle
-    };
-}));
-
 const translations = {
 	subtitle: { en: 'Selected Work', es: 'Trabajos Seleccionados' },
 	title: { en: 'Evidences', es: 'Evidencias' },
 	description: { en: 'Some exercises that demonstrate my skills and abilities in Databases', es: 'Algunos ejercicios que demuestran mis habilidades y destresas en Bases de Datos' }
 };
+
+const categories = [
+	{
+		slug: 'sql',
+		label: 'SQL',
+		descEN: 'Queries, joins, views and more',
+		descES: 'Consultas, joins, vistas y más',
+	},
+	{
+		slug: 'plsql',
+		label: 'PL/SQL',
+		descEN: 'Procedures, functions and triggers',
+		descES: 'Procedimientos, funciones y triggers',
+	},
+	{
+		slug: 'nosql',
+		label: 'NoSQL',
+		descEN: 'MongoDB, Redis and document databases',
+		descES: 'MongoDB, Redis y bases de datos documentales',
+	},
+	{
+		slug: 'proyecto-bd',
+		label: 'Proyecto',
+		descEN: 'Final database project',
+		descES: 'Proyecto final de bases de datos',
+	},
+];
 ---
 
 <Layout title={`Evidences | David Caicedo`}>
@@ -44,28 +43,36 @@ const translations = {
 	<main class="min-h-screen px-4 sm:px-6 md:px-6">
 		<section class="max-w-3xl mx-auto min-h-[calc(100vh-5rem)] pt-24 sm:pt-32 md:pt-48 pb-16 sm:pb-24 fade-in px-2 sm:px-0">
 			<div class="max-w-2xl mb-12 sm:mb-16">
-				<p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 tracking-wider uppercase" data-en={translations.subtitle.en} data-es={translations.subtitle.es}>{translations.subtitle.en}</p>
-				<h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white" data-en={translations.title.en} data-es={translations.title.es}>
+				<p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 tracking-wider uppercase"
+					data-en={translations.subtitle.en} data-es={translations.subtitle.es}>
+					{translations.subtitle.en}
+				</p>
+				<h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white"
+					data-en={translations.title.en} data-es={translations.title.es}>
 					{translations.title.en}
 				</h1>
-				<p class="mt-3 sm:mt-4 text-sm sm:text-lg text-gray-600 dark:text-gray-400" data-en={translations.description.en} data-es={translations.description.es}>
+				<p class="mt-3 sm:mt-4 text-sm sm:text-lg text-gray-600 dark:text-gray-400"
+					data-en={translations.description.en} data-es={translations.description.es}>
 					{translations.description.en}
 				</p>
 			</div>
 
 			<div class="grid grid-cols-2 gap-4">
-				{projects.map((project) => (
-					<a href={`/projects/${project.slug}`} class="animated-border group relative block p-px rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 transition-all duration-300">
-						<div class="relative h-16 sm:h-20 flex items-center justify-center text-center overflow-hidden rounded-[calc(0.75rem-1px)]">
-							<div class="flex items-center justify-center text-center h-full transition-all duration-300 group-hover:scale-90 group-hover:opacity-0 px-4">
-								<h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
-									<span class="locale-es">{project.name}</span>
-									<span class="locale-en">{project.enName}</span>
+				{categories.map((cat) => (
+					<a href={`/projects/${cat.slug}`}
+						class="animated-border group relative block p-px rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 transition-all duration-300">
+						<div class="relative h-20 sm:h-24 flex items-center justify-center text-center overflow-hidden rounded-[calc(0.75rem-1px)] px-4">
+							<div class="flex flex-col items-center justify-center h-full transition-all duration-300 group-hover:scale-90 group-hover:opacity-0">
+								<h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+									{cat.label}
 								</h3>
+								<p class="text-xs text-gray-500 dark:text-gray-400 mt-1 locale-es">{cat.descES}</p>
+								<p class="text-xs text-gray-500 dark:text-gray-400 mt-1 locale-en">{cat.descEN}</p>
 							</div>
 							<div class="absolute inset-0 flex items-center justify-center translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-								<span class="text-xs sm:text-sm font-bold text-primary dark:text-white uppercase tracking-wider" data-en="View Project" data-es="Ver proyecto">
-									Ver proyecto
+								<span class="text-xs sm:text-sm font-bold text-primary dark:text-white uppercase tracking-wider"
+									data-en="View" data-es="Ver">
+									Ver
 								</span>
 							</div>
 						</div>
@@ -79,23 +86,13 @@ const translations = {
 
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
-			const observerOptions = {
-				root: null,
-				rootMargin: '0px',
-				threshold: 0.1
-			};
-
+			const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
 			const observer = new IntersectionObserver((entries) => {
 				entries.forEach(entry => {
-					if (entry.isIntersecting) {
-						entry.target.classList.add('visible');
-					}
+					if (entry.isIntersecting) entry.target.classList.add('visible');
 				});
 			}, observerOptions);
-
-			document.querySelectorAll('.fade-in').forEach(el => {
-				observer.observe(el);
-			});
+			document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 		});
 	</script>
 </Layout>
