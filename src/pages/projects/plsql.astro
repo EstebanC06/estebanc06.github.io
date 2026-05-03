@@ -29,15 +29,799 @@ const scripts: {
 	descriptionEN: string;
 	code: string;
 }[] = [
-	// Ejemplo:
-	// {
-	//   title: 'Procedimiento Nómina - Taller 2',
-	//   titleEN: 'Payroll Procedure - Workshop 2',
-	//   file: '/scripts/plsql/01-nomina.sql',
-	//   description: 'Liquidación de nómina con cursores y excepciones',
-	//   descriptionEN: 'Payroll settlement using cursors and exceptions',
-	//   code: `CREATE OR REPLACE PROCEDURE liquidar_nomina IS\n  CURSOR c_emp IS SELECT * FROM empleados;\nBEGIN\n  FOR emp IN c_emp LOOP\n    -- lógica aquí\n  END LOOP;\nEND;`
-	// },
+	{
+		title: 'Bloques Anónimos — Variables y ROWTYPE',
+		titleEN: 'Anonymous Blocks — Variables & ROWTYPE',
+		file: '/scripts/plsql/01-bloques-anonimos.sql',
+		description: 'Declaración de variables escalares, %ROWTYPE y %TYPE para consultar empleados de HR.',
+		descriptionEN: 'Scalar variables, %ROWTYPE and %TYPE declarations to query HR employees.',
+		code: `-- Bloque 1: Hola Mundo
+DECLARE
+    vv_holaworld VARCHAR2(50) := 'Hola Mundo';
+BEGIN
+    vv_holaworld := 'Hola Mundo';
+    dbms_output.put_line(vv_holaworld);
+END;
+/
+
+-- Bloque 2: %ROWTYPE — recuperar fila completa
+DECLARE
+    vv_empleado HR.EMPLOYEES%ROWTYPE;
+BEGIN
+    SELECT * INTO vv_empleado
+    FROM HR.EMPLOYEES
+    WHERE EMPLOYEE_ID = 110;
+    dbms_output.put_line('El nombre del empleado es : ' || vv_empleado.LAST_NAME);
+END;
+/
+
+-- Bloque 3: %TYPE — columnas individuales
+DECLARE
+    vv_nombre   HR.EMPLOYEES.FIRST_NAME%TYPE;
+    vv_apellido HR.EMPLOYEES.LAST_NAME%TYPE;
+BEGIN
+    SELECT FIRST_NAME, LAST_NAME
+    INTO   vv_nombre, vv_apellido
+    FROM   HR.EMPLOYEES
+    WHERE  EMPLOYEE_ID = 110;
+    dbms_output.put_line('El nombre del empleado es : ' || vv_nombre);
+    dbms_output.put_line('El apellido del empleado es: ' || vv_apellido);
+END;
+/`,
+	},
+	{
+		title: 'Estructuras de Control — IF, WHILE, FOR, GOTO',
+		titleEN: 'Control Structures — IF, WHILE, FOR, GOTO',
+		file: '/scripts/plsql/02-estructuras-control.sql',
+		description: 'GOTO para detección de primos, WHILE para Fibonacci, WHILE para MCD/MCM y FOR para raíz cuadrada.',
+		descriptionEN: 'GOTO for prime detection, WHILE for Fibonacci, WHILE for GCD/LCM and FOR for square root.',
+		code: `-- 1. GOTO — detectar si el día del mes es primo
+DECLARE
+    vd_current_date NUMBER := TO_NUMBER(TO_CHAR(SYSDATE, 'DD'));
+BEGIN
+    IF vd_current_date IN (2,3,5,7,11,13,17,19,23,29,31) THEN
+        GOTO proceso_primo;
+    ELSE
+        GOTO proceso_noprimo;
+    END IF;
+    <<proceso_primo>>
+        dbms_output.put_line('HOLA PRIMO');
+    <<proceso_noprimo>>
+        dbms_output.put_line('NO ES PRIMO');
+END;
+/
+
+-- 2. WHILE — secuencia de Fibonacci hasta 100
+DECLARE
+    vn_a NUMBER := 0;
+    vn_b NUMBER := 1;
+BEGIN
+    WHILE vn_a <= 100 LOOP
+        dbms_output.put_line(vn_a);
+        vn_b := vn_a + vn_b;
+        vn_a := vn_b - vn_a;
+    END LOOP;
+END;
+/
+
+-- 3. WHILE — MCD y MCM (algoritmo de Euclides)
+DECLARE
+    a NUMBER := 12;
+    b NUMBER := 18;
+    mcd NUMBER;
+    mcm NUMBER;
+    x NUMBER;
+    y NUMBER;
+BEGIN
+    x := a;
+    y := b;
+    WHILE y != 0 LOOP
+        mcd := MOD(x, y);
+        x := y;
+        y := mcd;
+    END LOOP;
+    mcd := x;
+    mcm := (a * b) / mcd;
+    DBMS_OUTPUT.PUT_LINE('El MCM es: ' || mcm);
+END;
+/
+
+-- 4. FOR — raíz cuadrada exacta de un número
+DECLARE
+    vn_numerouno  NUMBER := 49;
+    vn_numeroraiz NUMBER := 0;
+BEGIN
+    FOR vn_numeroraiz IN 1..SQRT(vn_numerouno) LOOP
+        IF (vn_numeroraiz * vn_numeroraiz) = vn_numerouno THEN
+            dbms_output.put_line(vn_numeroraiz);
+        ELSE IF vn_numerouno = vn_numeroraiz THEN
+            dbms_output.put_line('No tiene raiz');
+        END IF;
+        END IF;
+    END LOOP;
+END;
+/`,
+	},
+	{
+		title: 'Procedimientos — sp_saludar y sp_ultimo_viernes',
+		titleEN: 'Procedures — sp_saludar & sp_ultimo_viernes',
+		file: '/scripts/plsql/03-procedimientos-basicos.sql',
+		description: 'Procedimiento con parámetro DEFAULT para saludar y SP para calcular el último viernes del mes.',
+		descriptionEN: 'Procedure with DEFAULT parameter to greet and SP to calculate the last Friday of the month.',
+		code: `-- SP con parámetro DEFAULT
+CREATE OR REPLACE PROCEDURE sp_saludar(
+    vv_nombre VARCHAR2 DEFAULT ' Willie Colón'
+)
+/*
+    Autor: David Caicedo
+    Fecha: 23-02-2026
+    Descripcion: SP que genera un saludo a alguien
+*/
+IS
+    vv_mensaje_final VARCHAR2(100);
+BEGIN
+    vv_mensaje_final := 'Hola' || vv_nombre;
+    dbms_output.put_line(vv_mensaje_final);
+END;
+/
+
+-- Ejecución
+BEGIN
+    sp_saludar(' Joe Arroyo');
+END;
+/
+
+DROP PROCEDURE sp_saludar;
+
+-- SP que devuelve el último viernes del mes
+CREATE OR REPLACE PROCEDURE sp_ultimo_viernes(
+    vn_numero_mes NUMBER
+)
+/*
+    Autor: David Caicedo
+    Fecha: 23-02-2026
+    Descripcion: Devuelve el último viernes del mes indicado
+*/
+IS
+BEGIN
+    SELECT NEXT_DAY(LAST_DAY(SYSDATE) - 7, 'VIERNES')
+    FROM   DUAL;
+END;
+/`,
+	},
+	{
+		title: 'Inserción Masiva — Conceptos y Periodos de Nómina',
+		titleEN: 'Bulk Insert — Payroll Concepts & Periods',
+		file: '/scripts/plsql/04-insercion-masiva.sql',
+		description: 'Generación de 80 conceptos de nómina con DBMS_RANDOM y creación de periodos mensual, quincenal y semanal.',
+		descriptionEN: 'Generation of 80 payroll concepts with DBMS_RANDOM and creation of monthly, bi-weekly and weekly periods.',
+		code: `-- 1. Insertar 80 conceptos de nómina aleatorios
+DECLARE
+    v_concept_type  VARCHAR2(10);
+    v_calc_method   VARCHAR2(15);
+    v_default_rate  NUMBER(12,4);
+BEGIN
+    FOR i IN 1..80 LOOP
+        -- Alternar tipo
+        IF MOD(i, 2) = 0 THEN
+            v_concept_type := 'DEVENGO';
+        ELSE
+            v_concept_type := 'DEDUCCION';
+        END IF;
+
+        -- Método de cálculo aleatorio
+        CASE TRUNC(DBMS_RANDOM.VALUE(1, 5))
+            WHEN 1 THEN v_calc_method := 'FIJO';
+            WHEN 2 THEN v_calc_method := 'PORCENTAJE';
+            WHEN 3 THEN v_calc_method := 'POR_HORA';
+            WHEN 4 THEN v_calc_method := 'POR_DIA';
+        END CASE;
+
+        -- Valor por defecto según método
+        IF v_calc_method = 'PORCENTAJE' THEN
+            v_default_rate := ROUND(DBMS_RANDOM.VALUE(0.01, 0.20), 4);
+        ELSIF v_calc_method IN ('POR_HORA', 'POR_DIA') THEN
+            v_default_rate := ROUND(DBMS_RANDOM.VALUE(0.5, 2), 4);
+        ELSE
+            v_default_rate := NULL;
+        END IF;
+
+        INSERT INTO pay_concepts (code, name, concept_type, calc_method, default_rate, is_active)
+        VALUES (
+            'CONC_' || LPAD(i, 3, '0'),
+            'Concepto Generado ' || i,
+            v_concept_type,
+            v_calc_method,
+            v_default_rate,
+            'Y'
+        );
+    END LOOP;
+END;
+/
+
+SELECT * FROM pay_concepts;
+
+-- 2. Generar periodos de nómina para 2026 (mensual, quincenal y semanal)
+DECLARE
+    v_start DATE := DATE '2026-01-01';
+    v_end   DATE;
+BEGIN
+    -- MENSUAL (12 meses)
+    FOR i IN 1..12 LOOP
+        v_end := LAST_DAY(ADD_MONTHS(v_start, i - 1));
+        INSERT INTO pay_periods (payroll_type_id, period_code, date_start, date_end, status)
+        VALUES (1, TO_CHAR(ADD_MONTHS(v_start, i-1), 'YYYY-MM'),
+                TRUNC(ADD_MONTHS(v_start, i-1), 'MM'), v_end, 'ABIERTO');
+    END LOOP;
+
+    -- QUINCENAL (24 periodos)
+    FOR i IN 1..12 LOOP
+        INSERT INTO pay_periods (payroll_type_id, period_code, date_start, date_end, status)
+        VALUES (2, TO_CHAR(ADD_MONTHS(v_start, i-1), 'YYYY-MM') || '-Q1',
+                TRUNC(ADD_MONTHS(v_start, i-1), 'MM'),
+                TRUNC(ADD_MONTHS(v_start, i-1), 'MM') + 14, 'ABIERTO');
+
+        INSERT INTO pay_periods (payroll_type_id, period_code, date_start, date_end, status)
+        VALUES (2, TO_CHAR(ADD_MONTHS(v_start, i-1), 'YYYY-MM') || '-Q2',
+                TRUNC(ADD_MONTHS(v_start, i-1), 'MM') + 15,
+                LAST_DAY(ADD_MONTHS(v_start, i-1)), 'ABIERTO');
+    END LOOP;
+
+    -- SEMANAL (52 semanas)
+    FOR i IN 0..51 LOOP
+        INSERT INTO pay_periods (payroll_type_id, period_code, date_start, date_end, status)
+        VALUES (3, '2026-W' || LPAD(i + 1, 2, '0'),
+                v_start + (i * 7), v_start + (i * 7) + 6, 'ABIERTO');
+    END LOOP;
+END;
+/`,
+	},
+	{
+		title: 'Cursores Explícitos — Empleados por Departamento',
+		titleEN: 'Explicit Cursors — Employees by Department',
+		file: '/scripts/plsql/05-cursores.sql',
+		description: 'Uso de cursores explícitos: OPEN-FETCH-CLOSE para un registro y con LOOP para recorrer todos.',
+		descriptionEN: 'Explicit cursor usage: OPEN-FETCH-CLOSE for one record and LOOP to iterate all results.',
+		code: `-- Cursor: obtener solo el primer empleado del depto 80
+DECLARE
+    CURSOR cursos_empleados_80 IS
+        SELECT FIRST_NAME, LAST_NAME
+        FROM   DCAICEDOS.employees
+        WHERE  department_id = 80;
+    nom VARCHAR2(50);
+    ape VARCHAR2(50);
+BEGIN
+    OPEN cursos_empleados_80;
+    FETCH cursos_empleados_80 INTO nom, ape;
+    dbms_output.put_line(nom || ' ' || ape);
+    CLOSE cursos_empleados_80;
+END;
+/
+
+-- Cursor con LOOP: recorrer TODOS los empleados del depto 80
+DECLARE
+    CURSOR cursos_empleados_80 IS
+        SELECT FIRST_NAME, LAST_NAME
+        FROM   DCAICEDOS.employees
+        WHERE  department_id = 80;
+    nom VARCHAR2(50);
+    ape VARCHAR2(50);
+BEGIN
+    OPEN cursos_empleados_80;
+    LOOP
+        FETCH cursos_empleados_80 INTO nom, ape;
+        EXIT WHEN cursos_empleados_80%NOTFOUND;
+        dbms_output.put_line(nom || ' ' || ape);
+    END LOOP;
+    CLOSE cursos_empleados_80;
+END;
+/`,
+	},
+	{
+		title: 'Cursor Dinámico + Procedimiento calculate_monthly_payroll',
+		titleEN: 'Dynamic Cursor + calculate_monthly_payroll Procedure',
+		file: '/scripts/plsql/06-cursor-dinamico-payroll.sql',
+		description: 'Listado de empleados por departamento con variable de sustitución y procedimiento de nómina mensual con cursores.',
+		descriptionEN: 'Employee listing by department with substitution variable and monthly payroll procedure using cursors.',
+		code: `-- Listado de empleados con variable de sustitución
+DECLARE
+    v_dept  NUMBER := &Ingrese_Departamento;
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count
+    FROM employees
+    WHERE department_id = v_dept;
+
+    IF v_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('No existen empleados en el departamento ' || v_dept);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Empleados del departamento ' || v_dept || ':');
+        DBMS_OUTPUT.PUT_LINE('-------------------------------------------');
+        FOR emp IN (
+            SELECT first_name, last_name
+            FROM   DCAICEDOS.employees
+            WHERE  department_id = v_dept
+        ) LOOP
+            DBMS_OUTPUT.PUT_LINE(emp.first_name || ' ' || emp.last_name);
+        END LOOP;
+        DBMS_OUTPUT.PUT_LINE('-------------------------------------------');
+        DBMS_OUTPUT.PUT_LINE('Total empleados: ' || v_count);
+    END IF;
+END;
+/
+
+-- Procedimiento: liquidación mensual con devengos y deducciones
+CREATE OR REPLACE PROCEDURE calculate_monthly_payroll(
+    p_period_code VARCHAR2
+)
+/*
+    Autor: David Caicedo
+    Fecha: 02-04-2026
+    Descripcion: SP que genera el salario mensual de los empleados
+*/
+IS
+    v_period_id pay_periods.period_id%TYPE;
+
+    CURSOR c_employees IS
+        SELECT employee_id,
+               first_name || ' ' || last_name AS full_name,
+               salary
+        FROM   employees
+        WHERE  salary IS NOT NULL;
+
+    CURSOR c_devengo IS
+        SELECT default_rate FROM pay_concepts
+        WHERE  concept_type = 'DEVENGO'
+          AND  calc_method  = 'PORCENTAJE'
+          AND  is_active     = 'Y'
+          AND  ROWNUM = 1;
+
+    CURSOR c_deduccion IS
+        SELECT default_rate FROM pay_concepts
+        WHERE  concept_type = 'DEDUCCION'
+          AND  calc_method  = 'PORCENTAJE'
+          AND  is_active     = 'Y'
+          AND  ROWNUM = 1;
+
+    v_total_devengos    NUMBER(12,2);
+    v_total_deducciones NUMBER(12,2);
+    v_dev_rate          NUMBER(12,4) := 0;
+    v_ded_rate          NUMBER(12,4) := 0;
+BEGIN
+    SELECT period_id INTO v_period_id
+    FROM   pay_periods
+    WHERE  period_code = p_period_code
+      AND  status = 'ABIERTO';
+
+    DBMS_OUTPUT.PUT_LINE('Procesando periodo: ' || p_period_code);
+
+    OPEN c_devengo;   FETCH c_devengo   INTO v_dev_rate; CLOSE c_devengo;
+    OPEN c_deduccion; FETCH c_deduccion INTO v_ded_rate; CLOSE c_deduccion;
+
+    FOR emp IN c_employees LOOP
+        v_total_devengos    := emp.salary + (emp.salary * NVL(v_dev_rate, 0));
+        v_total_deducciones := emp.salary * NVL(v_ded_rate, 0);
+
+        DBMS_OUTPUT.PUT_LINE('-----------------------------------');
+        DBMS_OUTPUT.PUT_LINE('Empleado: '    || emp.full_name);
+        DBMS_OUTPUT.PUT_LINE('Salario Base: ' || emp.salary);
+        DBMS_OUTPUT.PUT_LINE('Devengos: '    || ROUND(v_total_devengos, 2));
+        DBMS_OUTPUT.PUT_LINE('Deducciones: ' || ROUND(v_total_deducciones, 2));
+        DBMS_OUTPUT.PUT_LINE('Neto: '        || ROUND(v_total_devengos - v_total_deducciones, 2));
+    END LOOP;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN DBMS_OUTPUT.PUT_LINE('Periodo inexistente o cerrado.');
+    WHEN OTHERS        THEN DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/`,
+	},
+	{
+		title: 'Funciones — fn_nombre y fn_calcular_integral',
+		titleEN: 'Functions — fn_nombre & fn_calcular_integral',
+		file: '/scripts/plsql/07-funciones.sql',
+		description: 'Función que busca apellido por nombre y función que calcula la integral definida de x² por el método del trapecio.',
+		descriptionEN: 'Function that finds a last name by first name and function that computes the definite integral of x² via trapezoidal rule.',
+		code: `-- Función: buscar apellido por nombre
+CREATE OR REPLACE FUNCTION fn_nombre(
+    nombre_empleado VARCHAR2
+)
+RETURN VARCHAR2
+IS
+    resultado VARCHAR2(50);
+BEGIN
+    SELECT EMPLOYEES.LAST_NAME INTO resultado
+    FROM   EMPLOYEES
+    WHERE  FIRST_NAME = nombre_empleado;
+    RETURN 'Hola ' || resultado;
+END;
+/
+
+-- Bloque de prueba
+DECLARE
+    Valor VARCHAR2(50);
+BEGIN
+    Valor := fn_nombre('Betty');
+    DBMS_OUTPUT.PUT_LINE(Valor);
+END;
+/
+
+-- Función: integral definida de x² (método del trapecio)
+CREATE OR REPLACE FUNCTION fn_calcular_integral(
+    limite_inf      NUMBER,
+    limite_superior NUMBER,
+    num_intervalos  NUMBER
+)
+RETURN NUMBER
+IS
+    v_h   NUMBER;
+    v_sum NUMBER := 0;
+    v_x   NUMBER;
+BEGIN
+    v_h := (limite_superior - limite_inf) / num_intervalos;
+
+    FOR i IN 0..num_intervalos LOOP
+        v_x := limite_inf + i * v_h;
+        IF i = 0 OR i = num_intervalos THEN
+            v_sum := v_sum + (v_x * v_x);
+        ELSE
+            v_sum := v_sum + 2 * (v_x * v_x);
+        END IF;
+    END LOOP;
+
+    RETURN (v_h / 2) * v_sum;
+END;
+/`,
+	},
+	{
+		title: 'Excepciones — Definidas por el Usuario',
+		titleEN: 'Exceptions — User-Defined',
+		file: '/scripts/plsql/08-excepciones.sql',
+		description: 'Declaración y lanzamiento de excepción personalizada con RAISE cuando un país no debería estar en la tabla.',
+		descriptionEN: 'Declaration and raising of a custom exception with RAISE when a country should not be in the table.',
+		code: `DECLARE
+    exc_pais EXCEPTION;
+    vc_pais  COUNTRIES.COUNTRY_NAME%TYPE;
+BEGIN
+    SELECT COUNTRY_NAME INTO vc_pais
+    FROM   COUNTRIES
+    WHERE  COUNTRY_NAME = 'Bogotá';
+
+    IF vc_pais = 'Bogotá' THEN
+        RAISE exc_pais;
+    END IF;
+EXCEPTION
+    WHEN exc_pais THEN
+        DBMS_OUTPUT.PUT_LINE('Pais detectado no se encuentra');
+END;
+/`,
+	},
+	{
+		title: 'Taller PL/SQL Avanzado — Sistema de Liquidación de Nómina',
+		titleEN: 'Advanced PL/SQL Workshop — Payroll Liquidation System',
+		file: '/scripts/plsql/09-taller-nomina-avanzado.sql',
+		description: 'Sistema completo de nómina: bloque anónimo, funciones encadenadas, procedimiento con excepciones, package PKG_NOMINA con sobrecarga, función pipelined, BULK COLLECT/FORALL y compound trigger.',
+		descriptionEN: 'Full payroll system: anonymous block, chained functions, procedure with exceptions, PKG_NOMINA package with overloading, pipelined function, BULK COLLECT/FORALL and compound trigger.',
+		code: `-- =====================================================================
+-- TALLER AVANZADO PL/SQL — SISTEMA DE LIQUIDACIÓN DE NÓMINA
+-- Universidad El Bosque — Bases de Datos 2
+-- Autores: David Caicedo / Nicolas Zambrano
+-- =====================================================================
+
+SET SERVEROUTPUT ON SIZE UNLIMITED;
+
+-- ============================================================
+-- PUNTO 1 — Bloque anónimo: Liquidación individual
+-- ============================================================
+DECLARE
+    v_id_empleado   EMPLEADOS.id_empleado%TYPE  := 1006;
+    v_nombre        EMPLEADOS.nombre%TYPE;
+    v_tipo_contrato EMPLEADOS.tipo_contrato%TYPE;
+    v_salario_base  EMPLEADOS.salario_base%TYPE;
+    v_fecha_ingreso EMPLEADOS.fecha_ingreso%TYPE;
+    v_cod_sede      EMPLEADOS.cod_sede%TYPE;
+    v_estado        EMPLEADOS.estado%TYPE;
+
+    v_id_quincena   VARCHAR2(15) := '2026-Q1-ENE';
+    v_salario_base_q NUMBER(12,2) := 0;
+    v_recargos       NUMBER(12,2) := 0;
+    v_bonificacion   NUMBER(12,2) := 0;
+    v_subtotal       NUMBER(12,2) := 0;
+    v_antiguedad     NUMBER(5)    := 0;
+    v_valor_hora     NUMBER(12,4) := 0;
+    v_num_sanciones  NUMBER(5)    := 0;
+
+    v_ret_servicios  NUMBER(5,2);
+    v_rec_nocturno   NUMBER(5,2);
+    v_rec_dominical  NUMBER(5,2);
+    v_rec_noct_dom   NUMBER(5,2);
+    v_nombre_sede    SEDES.nombre_sede%TYPE;
+
+    CURSOR cur_horas(p_id_empleado NUMBER, p_id_quincena VARCHAR2) IS
+        SELECT tipo_hora, cantidad_horas
+        FROM   HORAS_TRABAJADAS
+        WHERE  id_empleado = p_id_empleado
+        AND    id_quincena = p_id_quincena;
+    r_hora cur_horas%ROWTYPE;
+BEGIN
+    SELECT id_empleado, nombre, tipo_contrato, salario_base,
+           fecha_ingreso, cod_sede, estado
+    INTO   v_id_empleado, v_nombre, v_tipo_contrato, v_salario_base,
+           v_fecha_ingreso, v_cod_sede, v_estado
+    FROM   EMPLEADOS WHERE id_empleado = v_id_empleado;
+
+    SELECT nombre_sede INTO v_nombre_sede FROM SEDES WHERE cod_sede = v_cod_sede;
+    SELECT valor_numerico INTO v_ret_servicios FROM PARAMETROS WHERE cod_parametro = 'RET_SERVICIOS';
+    SELECT valor_numerico INTO v_rec_nocturno  FROM PARAMETROS WHERE cod_parametro = 'RECARGO_NOCTURNO';
+    SELECT valor_numerico INTO v_rec_dominical FROM PARAMETROS WHERE cod_parametro = 'RECARGO_DOMINICAL';
+    SELECT valor_numerico INTO v_rec_noct_dom  FROM PARAMETROS WHERE cod_parametro = 'RECARGO_NOCT_DOM';
+
+    v_antiguedad := TRUNC(MONTHS_BETWEEN(SYSDATE, v_fecha_ingreso) / 12);
+
+    IF v_tipo_contrato = 'PLANTA' THEN
+        v_salario_base_q := v_salario_base / 2;
+        v_valor_hora     := v_salario_base / 240;
+    ELSIF v_tipo_contrato = 'TEMPORAL' THEN
+        SELECT NVL(SUM(CASE WHEN tipo_hora = 'NORMAL' THEN cantidad_horas ELSE 0 END), 0)
+        INTO   v_salario_base_q
+        FROM   HORAS_TRABAJADAS
+        WHERE  id_empleado = v_id_empleado AND id_quincena = v_id_quincena;
+        v_salario_base_q := v_salario_base * v_salario_base_q;
+        v_valor_hora     := v_salario_base;
+    ELSIF v_tipo_contrato = 'SERVICIOS' THEN
+        v_salario_base_q := (v_salario_base - (v_salario_base * v_ret_servicios / 100)) / 2;
+        v_valor_hora     := 0;
+    END IF;
+
+    IF v_tipo_contrato != 'SERVICIOS' THEN
+        OPEN cur_horas(v_id_empleado, v_id_quincena);
+        LOOP
+            FETCH cur_horas INTO r_hora;
+            EXIT WHEN cur_horas%NOTFOUND;
+            IF    r_hora.tipo_hora = 'NOCTURNA'     THEN v_recargos := v_recargos + r_hora.cantidad_horas * v_valor_hora * v_rec_nocturno  / 100;
+            ELSIF r_hora.tipo_hora = 'DOMINICAL'    THEN v_recargos := v_recargos + r_hora.cantidad_horas * v_valor_hora * v_rec_dominical / 100;
+            ELSIF r_hora.tipo_hora = 'NOCTURNA_DOM' THEN v_recargos := v_recargos + r_hora.cantidad_horas * v_valor_hora * v_rec_noct_dom  / 100;
+            END IF;
+        END LOOP;
+        CLOSE cur_horas;
+
+        SELECT COUNT(*) INTO v_num_sanciones FROM SANCIONES
+        WHERE  id_empleado = v_id_empleado
+        AND    fecha_sancion >= ADD_MONTHS(SYSDATE, -6);
+
+        IF v_num_sanciones > 2 THEN
+            v_bonificacion := 0;
+        ELSE
+            v_bonificacion := CASE
+                WHEN v_antiguedad BETWEEN 3 AND 5  THEN v_salario_base_q * 0.03
+                WHEN v_antiguedad BETWEEN 6 AND 10 THEN v_salario_base_q * 0.06
+                WHEN v_antiguedad > 10             THEN v_salario_base_q * 0.10
+                ELSE 0
+            END;
+        END IF;
+    END IF;
+
+    v_subtotal := v_salario_base_q + v_recargos + v_bonificacion;
+    DBMS_OUTPUT.PUT_LINE('=== LIQUIDACIÓN QUINCENAL ===');
+    DBMS_OUTPUT.PUT_LINE('Empleado:      ' || v_nombre || ' (' || v_id_empleado || ')');
+    DBMS_OUTPUT.PUT_LINE('Salario base Q: ' || TO_CHAR(v_salario_base_q, 'FM9,999,999.00'));
+    DBMS_OUTPUT.PUT_LINE('Recargos:       ' || TO_CHAR(v_recargos,       'FM9,999,999.00'));
+    DBMS_OUTPUT.PUT_LINE('Bonificación:   ' || TO_CHAR(v_bonificacion,   'FM9,999,999.00'));
+    DBMS_OUTPUT.PUT_LINE('SUBTOTAL:       ' || TO_CHAR(v_subtotal,       'FM9,999,999.00'));
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN DBMS_OUTPUT.PUT_LINE('ERROR: Empleado no encontrado.');
+    WHEN OTHERS        THEN DBMS_OUTPUT.PUT_LINE('ERROR: ' || SQLERRM);
+END;
+/
+
+-- ============================================================
+-- PUNTO 2 — Funciones standalone encadenadas
+-- ============================================================
+
+-- 2.1 fn_salario_base_q
+CREATE OR REPLACE FUNCTION fn_salario_base_q(p_id_empleado NUMBER, p_id_quincena VARCHAR2)
+RETURN NUMBER IS
+    v_tipo  EMPLEADOS.tipo_contrato%TYPE;
+    v_sal   EMPLEADOS.salario_base%TYPE;
+    v_horas NUMBER := 0;
+    v_ret   NUMBER;
+BEGIN
+    SELECT tipo_contrato, salario_base INTO v_tipo, v_sal
+    FROM   EMPLEADOS WHERE id_empleado = p_id_empleado;
+
+    IF v_tipo = 'PLANTA' THEN RETURN v_sal / 2;
+    ELSIF v_tipo = 'TEMPORAL' THEN
+        BEGIN
+            SELECT NVL(cantidad_horas, 0) INTO v_horas FROM HORAS_TRABAJADAS
+            WHERE  id_empleado = p_id_empleado AND id_quincena = p_id_quincena AND tipo_hora = 'NORMAL';
+        EXCEPTION WHEN NO_DATA_FOUND THEN v_horas := 0;
+        END;
+        RETURN v_sal * v_horas;
+    ELSIF v_tipo = 'SERVICIOS' THEN
+        SELECT valor_numerico INTO v_ret FROM PARAMETROS WHERE cod_parametro = 'RET_SERVICIOS';
+        RETURN (v_sal - (v_sal * v_ret / 100)) / 2;
+    END IF;
+    RETURN 0;
+END fn_salario_base_q;
+/
+
+-- 2.2 fn_recargos
+CREATE OR REPLACE FUNCTION fn_recargos(p_id_empleado NUMBER, p_id_quincena VARCHAR2)
+RETURN NUMBER IS
+    v_tipo  EMPLEADOS.tipo_contrato%TYPE;
+    v_sal   EMPLEADOS.salario_base%TYPE;
+    v_vh    NUMBER;
+    v_total NUMBER := 0;
+    v_rn NUMBER; v_rd NUMBER; v_rnd NUMBER;
+BEGIN
+    SELECT tipo_contrato, salario_base INTO v_tipo, v_sal FROM EMPLEADOS WHERE id_empleado = p_id_empleado;
+    IF v_tipo = 'SERVICIOS' THEN RETURN 0; END IF;
+    SELECT valor_numerico INTO v_rn  FROM PARAMETROS WHERE cod_parametro = 'RECARGO_NOCTURNO';
+    SELECT valor_numerico INTO v_rd  FROM PARAMETROS WHERE cod_parametro = 'RECARGO_DOMINICAL';
+    SELECT valor_numerico INTO v_rnd FROM PARAMETROS WHERE cod_parametro = 'RECARGO_NOCT_DOM';
+    v_vh := CASE v_tipo WHEN 'PLANTA' THEN v_sal / 240 ELSE v_sal END;
+    FOR r IN (SELECT tipo_hora, cantidad_horas FROM HORAS_TRABAJADAS
+              WHERE id_empleado = p_id_empleado AND id_quincena = p_id_quincena) LOOP
+        IF    r.tipo_hora = 'NOCTURNA'     THEN v_total := v_total + r.cantidad_horas * v_vh * (v_rn  / 100);
+        ELSIF r.tipo_hora = 'DOMINICAL'    THEN v_total := v_total + r.cantidad_horas * v_vh * (v_rd  / 100);
+        ELSIF r.tipo_hora = 'NOCTURNA_DOM' THEN v_total := v_total + r.cantidad_horas * v_vh * (v_rnd / 100);
+        END IF;
+    END LOOP;
+    RETURN NVL(v_total, 0);
+END fn_recargos;
+/
+
+-- 2.3 fn_bonificacion (llama a fn_salario_base_q)
+CREATE OR REPLACE FUNCTION fn_bonificacion(p_id_empleado NUMBER) RETURN NUMBER IS
+    v_tipo      EMPLEADOS.tipo_contrato%TYPE;
+    v_ingreso   EMPLEADOS.fecha_ingreso%TYPE;
+    v_antiguedad NUMBER;
+    v_sanciones  NUMBER;
+    v_base_q     NUMBER;
+    v_pct        NUMBER := 0;
+BEGIN
+    SELECT tipo_contrato, fecha_ingreso INTO v_tipo, v_ingreso FROM EMPLEADOS WHERE id_empleado = p_id_empleado;
+    IF v_tipo = 'SERVICIOS' THEN RETURN 0; END IF;
+    SELECT COUNT(*) INTO v_sanciones FROM SANCIONES
+    WHERE  id_empleado = p_id_empleado AND fecha_sancion >= ADD_MONTHS(SYSDATE, -6);
+    IF v_sanciones > 2 THEN RETURN 0; END IF;
+    v_antiguedad := TRUNC(MONTHS_BETWEEN(SYSDATE, v_ingreso) / 12);
+    v_pct := CASE
+        WHEN v_antiguedad BETWEEN 3 AND 5  THEN 0.03
+        WHEN v_antiguedad BETWEEN 6 AND 10 THEN 0.06
+        WHEN v_antiguedad > 10             THEN 0.10
+        ELSE 0
+    END;
+    v_base_q := fn_salario_base_q(p_id_empleado, '2026-Q1-ENE');
+    RETURN v_base_q * v_pct;
+END fn_bonificacion;
+/
+
+-- 2.4 fn_bruto
+CREATE OR REPLACE FUNCTION fn_bruto(p_id_empleado NUMBER, p_id_quincena VARCHAR2)
+RETURN NUMBER IS
+BEGIN
+    RETURN fn_salario_base_q(p_id_empleado, p_id_quincena)
+         + fn_recargos(p_id_empleado, p_id_quincena)
+         + fn_bonificacion(p_id_empleado);
+END fn_bruto;
+/
+
+SELECT fn_bruto(1001, '2026-Q1-ENE') FROM DUAL;
+
+-- ============================================================
+-- PUNTO 3 — Procedimiento sp_liquidar_empleado con excepciones
+-- ============================================================
+SAVEPOINT sv_antes_del_procedure;
+
+CREATE OR REPLACE PROCEDURE sp_liquidar_empleado(
+    p_id_empleado NUMBER,
+    p_id_quincena VARCHAR2
+) IS
+    v_estado        EMPLEADOS.estado%TYPE;
+    v_liq_count     NUMBER(5);
+    v_salario_base_q  NUMBER(12,2) := 0;
+    v_recargos        NUMBER(12,2) := 0;
+    v_bonificacion    NUMBER(12,2) := 0;
+    v_bruto           NUMBER(12,2) := 0;
+    v_neto            NUMBER(12,2) := 0;
+    v_total_deducciones NUMBER(12,2) := 0;
+BEGIN
+    BEGIN
+        SELECT estado INTO v_estado FROM EMPLEADOS WHERE id_empleado = p_id_empleado;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20001, 'Empleado no encontrado: ' || p_id_empleado);
+    END;
+    IF v_estado != 'ACTIVO' THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Empleado no activo: estado = ' || v_estado);
+    END IF;
+    SELECT COUNT(*) INTO v_liq_count FROM LIQUIDACION
+    WHERE  id_empleado = p_id_empleado AND id_quincena = p_id_quincena;
+    IF v_liq_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Liquidación ya existe para empleado ' || p_id_empleado || ' quincena ' || p_id_quincena);
+    END IF;
+
+    v_salario_base_q := fn_salario_base_q(p_id_empleado, p_id_quincena);
+    v_recargos       := fn_recargos(p_id_empleado, p_id_quincena);
+    v_bonificacion   := fn_bonificacion(p_id_empleado);
+    v_bruto          := v_salario_base_q + v_recargos + v_bonificacion;
+    v_neto           := v_bruto - v_total_deducciones;
+
+    INSERT INTO LIQUIDACION (id_liquidacion, id_empleado, id_quincena,
+        salario_base_q, recargos, bonificacion, bruto, total_deducciones, neto)
+    VALUES (SEQ_LIQUIDACION.NEXTVAL, p_id_empleado, p_id_quincena,
+        v_salario_base_q, v_recargos, v_bonificacion, v_bruto, v_total_deducciones, v_neto);
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN ROLLBACK; RAISE;
+END sp_liquidar_empleado;
+/
+
+-- ============================================================
+-- PUNTO 4 — Package PKG_NOMINA (Spec + Body)
+-- ============================================================
+CREATE OR REPLACE PACKAGE PKG_NOMINA AS
+    gc_smlmv NUMBER;
+    PROCEDURE sp_liquidar_quincena(p_id_empleado NUMBER, p_id_quincena VARCHAR2);
+    PROCEDURE sp_liquidar_quincena(p_id_quincena VARCHAR2);
+    FUNCTION fn_total_nomina_sede(p_cod_sede VARCHAR2, p_id_quincena VARCHAR2) RETURN NUMBER;
+    FUNCTION fn_reporte_nomina(p_cod_sede VARCHAR2 DEFAULT NULL, p_tipo_contrato VARCHAR2 DEFAULT NULL) RETURN t_lista_liq PIPELINED;
+END PKG_NOMINA;
+/
+
+-- Body del package (funciones privadas, sobrecarga, pipelined, BULK COLLECT/FORALL)
+-- Ver script completo en el archivo descargable.
+
+-- ============================================================
+-- PUNTO 5 — Compound Trigger sobre LIQUIDACION
+-- ============================================================
+CREATE OR REPLACE TRIGGER trg_liquidacion_compound
+FOR INSERT ON LIQUIDACION
+COMPOUND TRIGGER
+    v_neto_negativo BOOLEAN := FALSE;
+
+    BEFORE EACH ROW IS
+    BEGIN
+        IF :NEW.salario_base_q < 0 THEN
+            RAISE_APPLICATION_ERROR(-20010, 'Salario base no puede ser negativo');
+        END IF;
+        IF :NEW.neto < 0 THEN
+            v_neto_negativo := TRUE;
+            :NEW.total_deducciones := :NEW.total_deducciones - :NEW.embargo;
+            :NEW.embargo := 0;
+            :NEW.neto    := :NEW.bruto - :NEW.total_deducciones;
+            IF :NEW.neto < 0 THEN
+                :NEW.total_deducciones := :NEW.total_deducciones - :NEW.libranzas;
+                :NEW.libranzas := 0;
+                :NEW.neto      := :NEW.bruto - :NEW.total_deducciones;
+            END IF;
+        END IF;
+    END BEFORE EACH ROW;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF v_neto_negativo THEN
+            INSERT INTO LOG_NOMINA (id_log, fecha_hora, operacion, usuario, detalle)
+            VALUES (SEQ_LOG.NEXTVAL, SYSTIMESTAMP, 'ALERTA_NETO_NEGATIVO', USER,
+                'Empleado ' || :NEW.id_empleado || ' — neto negativo ajustado. Neto final: ' || :NEW.neto);
+            v_neto_negativo := FALSE;
+        END IF;
+        IF :NEW.libranzas > 0 THEN
+            UPDATE LIBRANZAS SET saldo_pendiente = saldo_pendiente - :NEW.libranzas
+            WHERE  id_empleado = :NEW.id_empleado AND estado = 'ACTIVA' AND ROWNUM = 1;
+            UPDATE LIBRANZAS SET estado = 'PAGADA'
+            WHERE  id_empleado = :NEW.id_empleado AND estado = 'ACTIVA' AND saldo_pendiente <= 0;
+        END IF;
+    END AFTER EACH ROW;
+
+    AFTER STATEMENT IS
+    BEGIN
+        INSERT INTO LOG_NOMINA (id_log, fecha_hora, operacion, usuario, detalle)
+        VALUES (SEQ_LOG.NEXTVAL, SYSTIMESTAMP, 'INSERT_LIQUIDACION', USER,
+            'Lote procesado a las ' || TO_CHAR(SYSTIMESTAMP, 'HH24:MI:SS.FF3'));
+    END AFTER STATEMENT;
+END trg_liquidacion_compound;
+/`,
+	},
 ];
 ---
 
