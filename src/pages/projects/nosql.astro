@@ -79,6 +79,413 @@ db.grupos.insertMany([
     {letra: "E", primerPuesto: "Alemania", segundoPuesto: "Ecuador", integrantes: ["Alemania", "Ecuador", "Curazao", "Costa de Marfil"]},
 ]);`
   },
+  {
+    title: 'Taller MQL — Ejercicios 1 al 10: Inserciones y Consultas Básicas',
+    titleEN: 'MQL Workshop — Exercises 1 to 10: Inserts & Basic Queries',
+    file: '/scripts/nosql/02-taller-mql-insert-find.mongodb',
+    description: 'insertOne con objeto anidado, insertMany con arrays, validación de _id duplicado y consultas con $gt, $lt, $and, $in sobre sample_airbnb.',
+    descriptionEN: 'insertOne with nested object, insertMany with arrays, duplicate _id validation and queries with $gt, $lt, $and, $in on sample_airbnb.',
+    code: `// ─── Ejercicio 1 — insertOne Básico ───────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertOne({
+  name: "Cozy Cabin Retreat",
+  summary: "Una cabaña acogedora rodeada de naturaleza, perfecta para descansar.",
+  property_type: "Cabin",
+  price: NumberDecimal("150.00")
+});
+
+// ─── Ejercicio 2 — insertOne con Objeto Anidado ────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertOne({
+  name: "Casa en el Cerro Santiago",
+  summary: "Hermosa casa con vista panorámica en Santiago de Chile.",
+  property_type: "House",
+  price: NumberDecimal("200.00"),
+  address: {
+    market: "Santiago",
+    country: "Chile"
+  }
+});
+
+// ─── Ejercicio 3 — insertMany Simple ──────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertMany([
+  {
+    name: "Studio de Arte Urbano",
+    summary: "Estudio artístico en el corazón de la ciudad.",
+    property_type: "Apartment",
+    price: NumberDecimal("80.00")
+  },
+  {
+    name: "Loft Minimalista",
+    summary: "Espacio minimalista y moderno con luz natural.",
+    property_type: "Loft",
+    price: NumberDecimal("110.00")
+  }
+]);
+
+// ─── Ejercicio 4 — insertMany con Arrays ──────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertMany([
+  {
+    name: "Apartamento con Todas las Comodidades",
+    summary: "Apartamento céntrico con todo lo necesario para una estadía perfecta.",
+    property_type: "Apartment",
+    price: NumberDecimal("130.00"),
+    amenities: ["Wifi", "Kitchen", "Free parking", "Air conditioning", "Washer", "Heating"]
+  }
+]);
+
+// ─── Ejercicio 5 — Validación de _id duplicado ────────────────────────────
+use("sample_airbnb")
+
+// Primero obtenemos un _id existente:
+const docExistente = db.listingsAndReviews.findOne({}, { _id: 1 })
+print("ID existente:", docExistente._id);
+
+// Intentamos insertar con ese mismo _id — genera error E11000 (duplicate key):
+db.listingsAndReviews.insertOne({
+  _id: docExistente._id,
+  name: "Documento Duplicado",
+  price: NumberDecimal("50.00")
+});
+
+// ─── Ejercicio 6 — find por País ──────────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {"address.country": "Brazil"},
+    {name: 1, price: 1}
+);
+
+// ─── Ejercicio 7 — find con $gt (Mayor que) ───────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {beds: {$gt: 5}},
+    {name: 1, number_of_reviews: 1}
+);
+
+// ─── Ejercicio 8 — find con $lt (Menor que) ───────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {price: {$lt: NumberDecimal("75.00")}},
+    {name: 1, price: 1, property_type: 1}
+);
+
+// ─── Ejercicio 9 — find con $and y Objeto Anidado ─────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find({
+    $and: [
+        {property_type: "Apartment"},
+        {"address.market": "New York"}
+    ]
+});
+
+// ─── Ejercicio 10 — find con $in ──────────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {property_type: {$in: ["House", "Condominium"]}},
+    {name: 1, price: 1, property_type: 1}
+);`
+  },
+  {
+    title: 'Taller MQL — Ejercicios 11 al 20: Consultas Avanzadas y Actualizaciones',
+    titleEN: 'MQL Workshop — Exercises 11 to 20: Advanced Queries & Updates',
+    file: '/scripts/nosql/03-taller-mql-find-update.mongodb',
+    description: 'Búsqueda con regex, arrays, sort/limit, proyecciones y operaciones updateOne/updateMany con $set, $push, $inc, $pull y upsert.',
+    descriptionEN: 'Search with regex, arrays, sort/limit, projections and updateOne/updateMany with $set, $push, $inc, $pull and upsert.',
+    code: `// ─── Ejercicio 11 — find con regex ───────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {name: { $regex: "Luxury", $options: "i" }},
+    {name: 1}
+);
+
+// ─── Ejercicio 12 — find en Array (amenities) ─────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {amenities: "Heating"},
+    {name: 1, amenities: 1}
+);
+
+// ─── Ejercicio 13 — find y $size de Array ─────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {amenities: {$size: 20}},
+    {name: 1, amenities: 1}
+);
+
+// ─── Ejercicio 14 — find con sort y limit ─────────────────────────────────
+// Los 10 listings más caros
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {},
+    {name: 1, price: 1, "address.country": 1}
+)
+.sort({price: -1})
+.limit(10);
+
+// ─── Ejercicio 15 — Proyección y Ordenamiento ─────────────────────────────
+// Listings sin last_review, ordenados por number_of_reviews desc
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {
+        $or: [
+            {last_review: {$exists: false}},
+            {last_review: null}
+        ]
+    },
+    {name: 1, summary: 1, description: 1, number_of_reviews: 1}
+)
+.sort({number_of_reviews: -1});
+
+// ─── Ejercicio 16 — updateOne Simple ──────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateOne(
+    {name: "Cozy Cabin Retreat"},
+    {$set: {property_type: "Entire home/apt"}}
+);
+
+// ─── Ejercicio 17 — updateOne con $set y $push ────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateOne(
+    {name: "Casa en el Cerro Santiago"},
+    {
+        $set: {summary: "Casa con un Smart TV"},
+        $push: {amenities: "Smart TV"}
+    }
+);
+
+// ─── Ejercicio 18 — updateMany con $inc ───────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateMany(
+    {"address.country": "Spain"},
+    {$inc: {number_of_reviews: 1}}
+);
+
+// ─── Ejercicio 19 — updateMany con $pull ──────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateMany(
+    {amenities: "Cable TV"},
+    {$pull: {amenities: "Cable TV"}}
+);
+
+// ─── Ejercicio 20 — updateOne con upsert: true ────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateOne(
+    {name: "Mansión de Prueba"},
+    {
+        $set: {
+            name: "Mansión de Prueba",
+            price: NumberDecimal("1500.00"),
+            "address.country": "United States",
+        }
+    },
+    { upsert: true }
+);`
+  },
+  {
+    title: 'Taller MQL — Ejercicios 21 al 30: Agregaciones y Pipelines',
+    titleEN: 'MQL Workshop — Exercises 21 to 30: Aggregations & Pipelines',
+    file: '/scripts/nosql/04-taller-mql-aggregate.mongodb',
+    description: 'Pipelines con $match, $count, $group, $unwind, $sort, $bucket, $lookup, $project y análisis por fecha con $year sobre sample_airbnb.',
+    descriptionEN: 'Pipelines with $match, $count, $group, $unwind, $sort, $bucket, $lookup, $project and date analysis with $year on sample_airbnb.',
+    code: `// ─── Ejercicio 21 — $match y $count ──────────────────────────────────────
+// Cuenta listings con más de 10 amenities
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  { $match: {
+      amenities: { $exists: true, $type: "array" },
+      $expr: { $gt: [{ $size: "$amenities" }, 10] }
+    }
+  },
+  { $count: "total" }
+]);
+
+// ─── Ejercicio 22 — $group: Precio Promedio por País ──────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $group: {
+      _id: "$address.country",
+      precio_promedio: { $avg: { $toDouble: "$price" } },
+      total_listings: { $sum: 1 }
+    }
+  },
+  { $sort: { precio_promedio: -1 } }
+]);
+
+// ─── Ejercicio 23 — $group y $unwind: Top 5 Amenities ────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  { $unwind: "$amenities" },
+  {
+    $group: {
+      _id: "$amenities",
+      frecuencia: { $sum: 1 }
+    }
+  },
+  { $sort: { frecuencia: -1 } },
+  { $limit: 5 },
+  {
+    $project: {
+      _id: 0,
+      amenity: "$_id",
+      frecuencia: 1
+    }
+  }
+]);
+
+// ─── Ejercicio 24 — $match, $group y $sort ────────────────────────────────
+// Cantidad de listings por property_type
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $group: {
+      _id: "$property_type",
+      cantidad: { $sum: 1 }
+    }
+  },
+  { $sort: { cantidad: -1 } },
+  {
+    $project: {
+      _id: 0,
+      tipo_propiedad: "$_id",
+      cantidad: 1
+    }
+  }
+]);
+
+// ─── Ejercicio 25 — $project y Conversión de Tipo ─────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      price: 1,
+      price_entero: { $toInt: { $toDouble: "$price" } }
+    }
+  },
+  { $limit: 20 }
+]);
+
+// ─── Ejercicio 26 — Pipeline Complejo: Review Scores ─────────────────────
+// Promedio de rating en listings con >= 10 reviews
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  { $match: { number_of_reviews: { $gte: 10 } } },
+  {
+    $group: {
+      _id: null,
+      promedio_rating: {
+        $avg: "$review_scores.review_scores_rating"
+      }
+    }
+  },
+  { $project: { _id: 0, promedio_rating: 1 } }
+]);
+
+// ─── Ejercicio 27 — $bucket: Rangos de Precio ─────────────────────────────
+use("sample_airbnb");
+
+db.listingsAndReviews.aggregate([
+    {
+        $bucket: {
+            groupBy: "$price",
+            boundaries: [0, 101, 301, 1001],
+            default: "1000+",
+            output: {
+                cantidad_listings: { $sum: 1 }
+            }
+        }
+    }
+]);
+
+// ─── Ejercicio 28 — $lookup (Simulación de JOIN) ──────────────────────────
+// Nota: colección "hosts" no existe en sample_airbnb (ejercicio teórico).
+// Este pipeline ilustra cómo se haría el join por host.host_id.
+use("sample_airbnb");
+
+db.listingsAndReviews.aggregate([
+    {
+        $lookup: {
+            from: "hosts",            // colección secundaria hipotética
+            localField: "host.host_id",
+            foreignField: "host_id",
+            as: "host_info"
+        }
+    }
+]);
+
+// ─── Ejercicio 29 — Densidad de Huéspedes por property_type ──────────────
+use("sample_airbnb");
+
+db.listingsAndReviews.aggregate([
+    {
+        $group: {
+            _id: "$property_type",
+            promedio_huespedes: {
+                $avg: "$accommodates"
+            }
+        }
+    },
+    {
+        $sort: {
+            promedio_huespedes: -1
+        }
+    }
+]);
+
+// ─── Ejercicio 30 — Análisis por Fecha: Últimas Reviews ───────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $match: {
+      last_review: { $exists: true, $ne: null }
+    }
+  },
+  {
+    $group: {
+      _id: { año: { $year: "$last_review" } },
+      cantidad_listings: { $sum: 1 }
+    }
+  },
+  { $sort: { "_id.año": -1 } },
+  {
+    $project: {
+      _id: 0,
+      año: "$_id.año",
+      cantidad_listings: 1
+    }
+  }
+]);`
+  },
 ];
 ---
 

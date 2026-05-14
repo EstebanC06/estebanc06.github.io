@@ -1,0 +1,167 @@
+// ─── Ejercicio 21 — $match y $count ──────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  { $match: {
+      amenities: { $exists: true, $type: "array" },
+      $expr: { $gt: [{ $size: "$amenities" }, 10] }
+    }
+  },
+  { $count: "total" }
+]);
+
+// ─── Ejercicio 22 — $group: Precio Promedio por País ──────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $group: {
+      _id: "$address.country",
+      precio_promedio: { $avg: { $toDouble: "$price" } },
+      total_listings: { $sum: 1 }
+    }
+  },
+  { $sort: { precio_promedio: -1 } }
+]);
+
+// ─── Ejercicio 23 — $group y $unwind: Top 5 Amenities ────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  { $unwind: "$amenities" },
+  {
+    $group: {
+      _id: "$amenities",
+      frecuencia: { $sum: 1 }
+    }
+  },
+  { $sort: { frecuencia: -1 } },
+  { $limit: 5 },
+  {
+    $project: {
+      _id: 0,
+      amenity: "$_id",
+      frecuencia: 1
+    }
+  }
+]);
+
+// ─── Ejercicio 24 — $match, $group y $sort ────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $group: {
+      _id: "$property_type",
+      cantidad: { $sum: 1 }
+    }
+  },
+  { $sort: { cantidad: -1 } },
+  {
+    $project: {
+      _id: 0,
+      tipo_propiedad: "$_id",
+      cantidad: 1
+    }
+  }
+]);
+
+// ─── Ejercicio 25 — $project y Conversión de Tipo ─────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      price: 1,
+      price_entero: { $toInt: { $toDouble: "$price" } }
+    }
+  },
+  { $limit: 20 }
+]);
+
+// ─── Ejercicio 26 — Pipeline Complejo: Review Scores ─────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  { $match: { number_of_reviews: { $gte: 10 } } },
+  {
+    $group: {
+      _id: null,
+      promedio_rating: {
+        $avg: "$review_scores.review_scores_rating"
+      }
+    }
+  },
+  { $project: { _id: 0, promedio_rating: 1 } }
+]);
+
+// ─── Ejercicio 27 — $bucket: Rangos de Precio ─────────────────────────────
+use("sample_airbnb");
+
+db.listingsAndReviews.aggregate([
+    {
+        $bucket: {
+            groupBy: "$price",
+            boundaries: [0, 101, 301, 1001],
+            default: "1000+",
+            output: {
+                cantidad_listings: { $sum: 1 }
+            }
+        }
+    }
+]);
+
+// ─── Ejercicio 28 — $lookup (Simulación de JOIN) ──────────────────────────
+// Nota: colección "hosts" no existe en sample_airbnb (ejercicio teórico).
+use("sample_airbnb");
+
+db.listingsAndReviews.aggregate([
+    {
+        $lookup: {
+            from: "hosts",
+            localField: "host.host_id",
+            foreignField: "host_id",
+            as: "host_info"
+        }
+    }
+]);
+
+// ─── Ejercicio 29 — Densidad de Huéspedes por property_type ──────────────
+use("sample_airbnb");
+
+db.listingsAndReviews.aggregate([
+    {
+        $group: {
+            _id: "$property_type",
+            promedio_huespedes: { $avg: "$accommodates" }
+        }
+    },
+    { $sort: { promedio_huespedes: -1 } }
+]);
+
+// ─── Ejercicio 30 — Análisis por Fecha: Últimas Reviews ───────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.aggregate([
+  {
+    $match: {
+      last_review: { $exists: true, $ne: null }
+    }
+  },
+  {
+    $group: {
+      _id: { año: { $year: "$last_review" } },
+      cantidad_listings: { $sum: 1 }
+    }
+  },
+  { $sort: { "_id.año": -1 } },
+  {
+    $project: {
+      _id: 0,
+      año: "$_id.año",
+      cantidad_listings: 1
+    }
+  }
+]);

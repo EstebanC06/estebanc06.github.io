@@ -1,0 +1,97 @@
+// ─── Ejercicio 11 — find con regex ────────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {name: { $regex: "Luxury", $options: "i" }},
+    {name: 1}
+);
+
+// ─── Ejercicio 12 — find en Array (amenities) ─────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {amenities: "Heating"},
+    {name: 1, amenities: 1}
+);
+
+// ─── Ejercicio 13 — find y $size de Array ─────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {amenities: {$size: 20}},
+    {name: 1, amenities: 1}
+);
+
+// ─── Ejercicio 14 — find con sort y limit ─────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {},
+    {name: 1, price: 1, "address.country": 1}
+)
+.sort({price: -1})
+.limit(10);
+
+// ─── Ejercicio 15 — Proyección y Ordenamiento ─────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {
+        $or: [
+            {last_review: {$exists: false}},
+            {last_review: null}
+        ]
+    },
+    {name: 1, summary: 1, description: 1, number_of_reviews: 1}
+)
+.sort({number_of_reviews: -1});
+
+// ─── Ejercicio 16 — updateOne Simple ──────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateOne(
+    {name: "Cozy Cabin Retreat"},
+    {$set: {property_type: "Entire home/apt"}}
+);
+
+// ─── Ejercicio 17 — updateOne con $set y $push ────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateOne(
+    {name: "Casa en el Cerro Santiago"},
+    {
+        $set: {summary: "Casa con un Smart TV"},
+        $push: {amenities: "Smart TV"}
+    }
+);
+
+// ─── Ejercicio 18 — updateMany con $inc ───────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateMany(
+    {"address.country": "Spain"},
+    {$inc: {number_of_reviews: 1}}
+);
+
+// ─── Ejercicio 19 — updateMany con $pull ──────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateMany(
+    {amenities: "Cable TV"},
+    {$pull: {amenities: "Cable TV"}}
+);
+
+// ─── Ejercicio 20 — updateOne con upsert: true ────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.updateOne(
+    {name: "Mansión de Prueba"},
+    {
+        $set: {
+            name: "Mansión de Prueba",
+            price: NumberDecimal("1500.00"),
+            "address.country": "United States",
+        }
+    },
+    { upsert: true }
+);

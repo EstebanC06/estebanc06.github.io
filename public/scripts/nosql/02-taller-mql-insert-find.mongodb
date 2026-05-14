@@ -1,0 +1,109 @@
+// ─── Ejercicio 1 — insertOne Básico ───────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertOne({
+  name: "Cozy Cabin Retreat",
+  summary: "Una cabaña acogedora rodeada de naturaleza, perfecta para descansar.",
+  property_type: "Cabin",
+  price: NumberDecimal("150.00")
+});
+
+// ─── Ejercicio 2 — insertOne con Objeto Anidado ────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertOne({
+  name: "Casa en el Cerro Santiago",
+  summary: "Hermosa casa con vista panorámica en Santiago de Chile.",
+  property_type: "House",
+  price: NumberDecimal("200.00"),
+  address: {
+    market: "Santiago",
+    country: "Chile"
+  }
+});
+
+// ─── Ejercicio 3 — insertMany Simple ──────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertMany([
+  {
+    name: "Studio de Arte Urbano",
+    summary: "Estudio artístico en el corazón de la ciudad.",
+    property_type: "Apartment",
+    price: NumberDecimal("80.00")
+  },
+  {
+    name: "Loft Minimalista",
+    summary: "Espacio minimalista y moderno con luz natural.",
+    property_type: "Loft",
+    price: NumberDecimal("110.00")
+  }
+]);
+
+// ─── Ejercicio 4 — insertMany con Arrays ──────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.insertMany([
+  {
+    name: "Apartamento con Todas las Comodidades",
+    summary: "Apartamento céntrico con todo lo necesario para una estadía perfecta.",
+    property_type: "Apartment",
+    price: NumberDecimal("130.00"),
+    amenities: ["Wifi", "Kitchen", "Free parking", "Air conditioning", "Washer", "Heating"]
+  }
+]);
+
+// ─── Ejercicio 5 — Validación de _id duplicado ────────────────────────────
+use("sample_airbnb")
+
+const docExistente = db.listingsAndReviews.findOne({}, { _id: 1 })
+print("ID existente:", docExistente._id);
+
+// Genera error E11000 (duplicate key):
+db.listingsAndReviews.insertOne({
+  _id: docExistente._id,
+  name: "Documento Duplicado",
+  price: NumberDecimal("50.00")
+});
+
+// ─── Ejercicio 6 — find por País ──────────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {"address.country": "Brazil"},
+    {name: 1, price: 1}
+);
+
+// ─── Ejercicio 7 — find con $gt (Mayor que) ───────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {beds: {$gt: 5}},
+    {name: 1, number_of_reviews: 1}
+);
+
+// ─── Ejercicio 8 — find con $lt (Menor que) ───────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {price: {$lt: NumberDecimal("75.00")}},
+    {name: 1, price: 1, property_type: 1}
+);
+
+// ─── Ejercicio 9 — find con $and y Objeto Anidado ─────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find({
+    $and: [
+        {property_type: "Apartment"},
+        {"address.market": "New York"}
+    ]
+});
+
+// ─── Ejercicio 10 — find con $in ──────────────────────────────────────────
+use("sample_airbnb")
+
+db.listingsAndReviews.find(
+    {property_type: {$in: ["House", "Condominium"]}},
+    {name: 1, price: 1, property_type: 1}
+);
